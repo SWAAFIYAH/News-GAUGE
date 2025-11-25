@@ -11,14 +11,35 @@ node User {
 
     can login_user with entry {
         if self.username == visitor.username and self.password == visitor.password {
-            report "login success for user " + self.username;
+            self.access_token = uuid.uuid4().hex;
+
+            report {"message":"login success for user " + self.username,
+            "access_token": self.access_token
+
+            };
+
         } else {
             report "login fail for user " + self.username;
         }
     }
 }
 
-# Base walker to visit or create user nodes
+
+node article{
+    has title: str;
+    has content : str;
+    has Source : str;
+    has url: str;
+    has category: str ;
+    has published_at: str;
+    has verified : bool = false;
+
+}
+
+
+
+
+#* Base walker to visit or create user nodes
 walker visit_user {
     obj __specs__ {
         static has auth: bool = False;  # disable auth for this walker
@@ -31,10 +52,10 @@ walker visit_user {
             visit new_user;
         }
     }
-}
+}*#
 
 # Walker to update or create user credentials
-walker update_user(visit_user) {
+walker update_user {
     obj __specs__ {
         static has auth: bool = False;
     }
@@ -52,16 +73,16 @@ walker update_user(visit_user) {
             report "User registered: " + self.username;
         } else {
             # Update existing user
-            for user in user_nodes {
-                user; update_user;
-            }
+            user = user_nodes[0];
+            user.username = self.username;
+            user.password = self.password;
             report "User updated: " + self.username;
         }
     }
 }
 
 # Walker to login users with proper credential check
-walker login_user(visit_user) {
+walker login_user{
     obj __specs__ {
         static has auth: bool = False;
     }
@@ -75,16 +96,49 @@ walker login_user(visit_user) {
         if len(user_nodes) == 0 {
             report "login fail: user not found";
         } else {
-            for user in user_nodes {
-                if user.password == self.password {
-                    report "login success for user " + self.username;
-                } else {
-                    report "login fail: incorrect password for user " + self.username;
-                }
+             user = user_nodes[0];  # Use the first match only
+            if user.password == self.password {
+                report "login success for user " + self.username;
+            } else {
+                report "login fail: incorrect password for user " + self.username;
             }
         }
     }
 }
+
+walker fetch_news {
+    can fetch with `root entry {
+        has api_key: str;  # Required parameter, no default
+        has category: str;  
+
+        articles = py_call("news_fetcher.fetch_news_from_api", api_key, category);
+
+        if ("error" in articles) {
+            report(articles["error"]);
+            stop;
+        }
+
+        for article in articles {
+            new_article = here ++> NewsArticle(
+                title=article["title"],
+                description=article["description"],
+                url=article["url"],
+                published_at=article["published_at"],
+                source=article["source"],
+                category=category
+            );
+            grant(new_article, level=ConnectPerm);
+        }
+
+        report("✅ Successfully fetched " + str(len(articles)) + " articles for category: " + category);
+    }
+}    
+
+    
+
+
+
+
 
 # Example entry to register a new user
 #with entry {
