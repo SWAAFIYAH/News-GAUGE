@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Jac
+.jac_cache/
+__jac_gen__/
+
+# MongoDB
+mongo-data/
+
+# Logs and PIDs
+*.log
+*.pid
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+
+# Misc
+nohup.out

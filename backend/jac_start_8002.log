@@ -1,7 +1,0 @@
-nohup: ignoring input
-INFO - DATABASE_HOST is not available! Using LocalDB...
-INFO:     Started server process [130315]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
-INFO:     127.0.0.1:54880 - "GET / HTTP/1.1" 404 Not Found

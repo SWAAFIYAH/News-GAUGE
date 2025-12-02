@@ -34,7 +34,7 @@ node Article {
     has category: str;
     has published_at: str;
     has fetched_at: str = "";
-    has verified: bool = false;
+    has verified: bool = False;
     has credibility_score: float = 0.0;
 }
 
@@ -65,7 +65,7 @@ walker update_user {
             new_user = here ++> User(
                 username=self.username, 
                 password=self.password,
-                created_at=str(now)
+                created_at=""
             );
             grant(new_user[0], level=ConnectPerm);
             report "✅ User registered: " + self.username;
@@ -87,7 +87,7 @@ walker login_user {
     has username: str;
     has password: str;
 
-    can login with `root entry {
+    can login_user with `root entry {
         all_users = [root --> (`?User)];
         user_nodes = [u for u in all_users if u.username == self.username];
         
@@ -110,20 +110,29 @@ walker fetch_and_store_news {
         static has auth: bool = False;
     }
 
+    has api_key: str = "";
     has category: str = "business";
     has country: str = "us";
     has limit: int = 20;
 
-    can fetch with `root entry {
-        report("⏳ Fetching " + self.category + " news...");
-        
-        # NOTE: In production, integrate with NewsAPI HTTP client
-        # For now, store sample articles
-        
+    can fetch_and_store_news with `root entry {
         # Get or create articles container
         articles_root = [root --> (`?Article)];
         
-        # Sample articles (in production, fetch from API)
+        sample_articles = [];
+        
+        # NOTE: Real NewsAPI integration requires Python interop
+        # For now, provide sample data. To add real fetching:
+        # 1. Use the existing news_fetcher.py from a separate Python service
+        # 2. Or call via HTTP to a Python microservice
+        
+        if self.api_key != "" and len(self.api_key) > 0 {
+            report("✅ API key received (" + str(len(self.api_key)) + " chars). Using sample data (real API integration pending).");
+        } else {
+            report("⚠️ No API key provided. Using sample data.");
+        }
+        
+        # Sample articles
         sample_articles = [
             {
                 "title": "Breaking: Tech Company Announces New AI",
@@ -141,7 +150,7 @@ walker fetch_and_store_news {
             }
         ];
         
-        # Store articles
+        # Store articles (dedup by URL)
         count = 0;
         for article in sample_articles {
             if article["url"] not in [a.url for a in articles_root] {
@@ -152,9 +161,9 @@ walker fetch_and_store_news {
                     url=article["url"],
                     category=self.category,
                     published_at=article["published_at"],
-                    verified=false,
+                    verified=False,
                     credibility_score=0.0,
-                    fetched_at=str(now)
+                    fetched_at=""
                 );
                 grant(new_article[0], level=ConnectPerm);
                 count = count + 1;
@@ -173,7 +182,7 @@ walker verify_article {
 
     has article_title: str;
 
-    can verify with `root entry {
+    can verify_article with `root entry {
         # Find article by title
         all_articles = [root --> (`?Article)];
         articles = [a for a in all_articles if a.title == self.article_title];
@@ -197,9 +206,9 @@ walker verify_article {
             s = raw_score.strip();
 
             # Validate result contains only digits and at most one dot
-            valid = true;
+            valid = True;
             if len(s) == 0 {
-                valid = false;
+                valid = False;
             }
             dot_count = 0;
             for ch in s {
@@ -208,12 +217,12 @@ walker verify_article {
                 } else {
                     in_digits = ch in ["0","1","2","3","4","5","6","7","8","9"];
                     if not in_digits {
-                        valid = false;
+                        valid = False;
                     }
                 }
             }
             if dot_count > 1 {
-                valid = false;
+                valid = False;
             }
 
             if valid {
@@ -247,7 +256,7 @@ walker get_news_by_category {
     has category: str;
     has limit: int = 20;
 
-    can get_news with `root entry {
+    can get_news_by_category with `root entry {
         # Find all articles in category
         all_articles = [root --> (`?Article)];
         category_articles = [a for a in all_articles if a.category == self.category];
@@ -288,7 +297,7 @@ walker list_all_articles {
 
     has limit: int = 100;
 
-    can list with `root entry {
+    can list_all_articles with `root entry {
         all_articles = [root --> (`?Article)];
         
         if len(all_articles) == 0 {
@@ -325,18 +334,55 @@ walker scheduled_news_fetch {
         static has auth: bool = False;
     }
 
-    can fetch_hourly with `root entry {
+    can scheduled_news_fetch with `root entry {
         categories = ["business", "health", "technology", "sports", "entertainment"];
         total_new = 0;
         
         report("🔄 Starting scheduled news fetch...");
         
         for category in categories {
-            # Spawn fetch_and_store_news for each category
+            # Spawn fetch_and_store_news for each category from the entry node
             visit root spawn fetch_and_store_news(category=category);
             total_new = total_new + 1;
         }
         
         report("✅ Scheduled fetch completed. Processed " + str(len(categories)) + " categories");
+    }
+}
+
+# Walker: Smoke test (fetch -> verify -> list) in one call
+walker run_smoke_test {
+    obj __specs__ {
+        static has auth: bool = False;
+    }
+
+    has category: str = "business";
+    has limit: int = 2;
+
+    can run_smoke_test with `root entry {
+        report("🚀 Running smoke test: fetch -> verify -> list");
+
+        # 1) Fetch and store sample articles for category
+        visit root spawn fetch_and_store_news(category=self.category, limit=self.limit);
+
+        # 2) Pick first article title and run verification
+        all_articles = [root --> (`?Article)];
+        chosen = [];
+        for a in all_articles {
+            if len(chosen) < 1 and a.category == self.category {
+                chosen.append(a);
+            }
+        }
+        if len(chosen) == 0 {
+            report("ℹ️ No article found to verify in category: " + self.category);
+        } else {
+            tgt = chosen[0];
+            visit root spawn verify_article(article_title=tgt.title);
+        }
+
+        # 3) List articles to show status
+        visit root spawn list_all_articles(limit=20);
+
+        report("✅ Smoke test complete");
     }
 }
