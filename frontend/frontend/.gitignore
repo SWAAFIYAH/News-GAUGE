@@ -49,3 +49,9 @@ coverage/
 # Temporary files
 *.tmp
 .cache/
+
+# Virtual environment
+venv/
+
+# Ignore frontend source (if you want to keep build-only files tracked)
+src/
