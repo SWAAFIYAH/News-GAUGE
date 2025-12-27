@@ -50,10 +50,6 @@ edge can_read {
 
 # Walker: Register or update user
 walker update_user {
-    obj __specs__ {
-        static has auth: bool = False;
-    }
-
     has username: str;
     has password: str;
     has email: str = "";
@@ -70,7 +66,6 @@ walker update_user {
                 email=self.email,
                 created_at=""
             );
-            grant(new_user[0], level=ConnectPerm);
             report {"success": True, "message": "User registered successfully", "token": self.username + "_authenticated", "username": self.username};
         } else {
             # Update existing user
@@ -86,10 +81,6 @@ walker update_user {
 
 # Walker: Login user
 walker login_user {
-    obj __specs__ {
-        static has auth: bool = False;
-    }
-
     has username: str;
     has password: str;
 
@@ -113,10 +104,6 @@ walker login_user {
 
 # Walker: Fetch news from external API and store
 walker fetch_and_store_news {
-    obj __specs__ {
-        static has auth: bool = False;
-    }
-
     has api_key: str = "";
     has category: str = "business";
     has country: str = "us";
@@ -311,7 +298,6 @@ walker fetch_and_store_news {
                     credibility_score=0.0,
                     fetched_at=""
                 );
-                grant(new_article[0], level=ConnectPerm);
                 count = count + 1;
             }
         }
@@ -322,10 +308,6 @@ walker fetch_and_store_news {
 
 # Walker: Verify article credibility with LLM
 walker verify_article {
-    obj __specs__ {
-        static has auth: bool = False;
-    }
-
     has article_title: str;
 
     can verify_article with `root entry {
@@ -395,10 +377,6 @@ walker verify_article {
 
 # Walker: Get articles by category for authenticated user
 walker get_news_by_category {
-    obj __specs__ {
-        static has auth: bool = False;
-    }
-
     has category: str;
     has limit: int = 20;
 
@@ -437,10 +415,6 @@ walker get_news_by_category {
 
 # Walker: List all available articles
 walker list_all_articles {
-    obj __specs__ {
-        static has auth: bool = False;
-    }
-
     has limit: int = 100;
 
     can list_all_articles with `root entry {
@@ -476,10 +450,6 @@ walker list_all_articles {
 
 # Walker: Scheduled hourly news fetch
 walker scheduled_news_fetch {
-    obj __specs__ {
-        static has auth: bool = False;
-    }
-
     can scheduled_news_fetch with `root entry {
         categories = ["business", "health", "technology", "sports", "entertainment"];
         total_new = 0;
@@ -498,10 +468,6 @@ walker scheduled_news_fetch {
 
 # Walker: Smoke test (fetch -> verify -> list) in one call
 walker run_smoke_test {
-    obj __specs__ {
-        static has auth: bool = False;
-    }
-
     has category: str = "business";
     has limit: int = 2;
 
